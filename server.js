@@ -10,7 +10,7 @@ app.get("/", async (request, response) => {
       args: ['--no-sandbox']
     });
     const page = await browser.newPage();
-    await page.goto('https://sleet-dagger.glitch.me/cars.html');
+    await page.goto('https://puppeteer-queryselector-eval-example.glitch.me/cars.html');
     const selector = 'select';
     const name = await page.$eval(selector, node => node.name);
     response.send(name);
