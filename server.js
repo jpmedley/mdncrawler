@@ -11,8 +11,10 @@ app.get("/", async (request, response) => {
     });
     const page = await browser.newPage();
     await page.goto('https://sleet-dagger.glitch.me/cars.html');
-    await page.waitForSelector('select');
-    response.send(document.querySelector('select'));
+    const selector = 'select';
+    const name = await page.$eval(selector, node => node.name);
+    response.send(name);
+    await browser.close();
   } catch (error) {
     response.status(503).end(error.message);
   }
