@@ -1,5 +1,5 @@
-# puppeteer-example
+# puppeteer-queryselector-eval-example
 
-A working example of Puppeteer on Glitch.
+An example of using Puppeteer to scrape the value of an HTML attribute.
 
 Tweet @kaycebasques for discussion.
