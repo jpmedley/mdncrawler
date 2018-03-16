@@ -2,6 +2,17 @@ const express = require('express'),
     app = express(),
     puppeteer = require('puppeteer');
 
+async function getBrowsers(row) {
+  const browsers = [];
+  const cells = await row.$$('td');
+  for (let i = 1; i < cells.length; i++) {
+    const content = await cells[i].getProperty('textContent');
+    const value = await content.jsonValue();
+    browsers.push(value);
+  }
+  return browsers;
+}
+
 app.use(express.static('static'));
 
 app.get("/:interface", async (request, response) => {
@@ -11,12 +22,8 @@ app.get("/:interface", async (request, response) => {
     });
     const page = await browser.newPage();
     await page.goto(`https://developer.mozilla.org/en-US/docs/Web/API/${request.params.interface}`);
-    const headers = await page.$$('#compat-desktop th');
-    const browsers = [];
-    for (let i = 0; i < headers.length; i++) {
-      const content = await headers[i].getProperty('textContent').toString();
-      browsers.push(content);
-    }
+    const rows = await page.$$('#compat-desktop tr');
+    const browsers = await getBrowsers(rows[0]);
     const string = browsers.concat(' ');
     response.send(string);
     await browser.close();
