@@ -52,7 +52,6 @@ const browserIds = {
 
 function getId(name) {
   for (let id in browserIds) {
-    
     if (browserIds[id].aliases.includes(name)) {
       return id;
     }
@@ -86,8 +85,7 @@ app.get("/:interface", async (request, response) => {
     await page.goto(`https://developer.mozilla.org/en-US/docs/Web/API/${request.params.interface}`);
     const rows = await page.$$('#compat-desktop tr');
     const browsers = await getBrowsers(rows[0]);
-    const string = browsers.concat(' ');
-    response.send(string);
+    response.send(browsers);
     await browser.close();
   } catch (error) {
     response.status(503).end(error.message);
