@@ -48,10 +48,10 @@ const browserIds = {
   }
 }
 
-
 function getId(name) {
   for (let id in browserIds) {
-    if (browserIds.id.aliases.includes(name)) {
+    console.log(browserIds[id].aliases);
+    if (browserIds[id].aliases.includes(name)) {
       return id;
     } else {
       return undefined;
@@ -67,7 +67,7 @@ async function getBrowsers(row) {
     const content = await cells[i].getProperty('textContent');
     const value = await content.jsonValue();
     const id = getId(value);
-    if (!id) throw Error('There is a browser name on the page that is not aliased in browserIds.');
+    if (!id) throw Error(`Browser name ${value} is not defined in browserIds.`);
     browsers.push(id);
   }
   return browsers;
@@ -92,6 +92,7 @@ app.get("/:interface", async (request, response) => {
   }
 });
 
-var listener = app.listen(process.env.PORT, function () {
+//var listener = app.listen(process.env.PORT, function () {
+var listener = app.listen(5000, function () {
   console.log('Your app is listening on port ' + listener.address().port);
 });
