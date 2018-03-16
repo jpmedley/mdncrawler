@@ -2,13 +2,46 @@ const express = require('express'),
     app = express(),
     puppeteer = require('puppeteer');
 
-async function getBrowsers(row) {
-  const browsers = [];
-  const cells = await row.$$('td');
+const browserIds = {
+  "android": {
+
+  },
+  "chrome": {
+    "aliases": [
+      "Chrome"
+    ]
+  },
+  "edge": {
+
+  },
+  "edge_mobile": {
+
+  },
+  "firefox": {
+
+  },
+  "firefox_android": {
+
+  },
+  "ie": {
+
+  },
+  "opera": {
+
+  },
+  "safari": {
+
+  }
+}
+
+async function getBrowsers(row, browsers) {
+  if (!browsers) browsers = {};
+  const cells = await row.$$('th');
   for (let i = 1; i < cells.length; i++) {
     const content = await cells[i].getProperty('textContent');
     const value = await content.jsonValue();
-    browsers.push(value);
+    console.log(value);
+    //browsers.push(value);
   }
   return browsers;
 }
