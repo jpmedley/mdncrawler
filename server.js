@@ -14,7 +14,8 @@ app.get("/:interface", async (request, response) => {
     const headers = await page.$$('#compat-desktop th');
     const browsers = [];
     for (let i = 0; i < headers.length; i++) {
-      const name = await headers[i].getProperty('textContent');
+      const header = await headers[i].getProperty('textContent')
+      const name = header.toString();
       browsers.push(name);
     }
     const string = browsers.concat(' ');
