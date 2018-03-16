@@ -12,31 +12,64 @@ const browserIds = {
     ]
   },
   "edge": {
-
+    "aliases": [
+      "Edge"
+    ]
   },
   "edge_mobile": {
 
   },
   "firefox": {
-
+    "aliases": [
+      
+    ]
   },
   "firefox_android": {
 
   },
   "ie": {
-
+    "aliases": [
+      
+    ]
   },
   "opera": {
-
+    "aliases": [
+      
+    ]
   },
   "safari": {
+    "aliases": [
+      
+    ]
+  }
+}
 
+function addBrowser(name, browsers) {
+  for (let browser in browsers) {
+    if (browser.aliases.includes(name)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+
+function contains(name, browsers) {
+  for (let browser in browsers) {
+    if (browser.aliases.includes(name)) {
+      return true;
+    } else {
+      return false;
+    }
   }
 }
 
 async function getBrowsers(row, browsers) {
-  if (!browsers) browsers = {};
+  if (!browsers) {
+    let browsers = {};
+  }
   const cells = await row.$$('th');
+  if (cells.length === 0) throw Error('The row that was passed to getBrowsers() has no <th> elements.');
   for (let i = 1; i < cells.length; i++) {
     const content = await cells[i].getProperty('textContent');
     const value = await content.jsonValue();
