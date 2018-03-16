@@ -4,7 +4,9 @@ const express = require('express'),
 
 const browserIds = {
   "android": {
-
+    "aliases": [
+      
+    ]
   },
   "chrome": {
     "aliases": [
@@ -25,7 +27,9 @@ const browserIds = {
     ]
   },
   "firefox_android": {
-
+    "aliases": [
+      
+    ]
   },
   "ie": {
     "aliases": [
@@ -44,37 +48,27 @@ const browserIds = {
   }
 }
 
-function addBrowser(name, browsers) {
-  for (let browser in browsers) {
-    if (browser.aliases.includes(name)) {
-      return true;
+
+function getId(name) {
+  for (let id in browserIds) {
+    if (browserIds.id.aliases.includes(name)) {
+      return id;
     } else {
-      return false;
+      return undefined;
     }
   }
 }
 
-function contains(name, browsers) {
-  for (let browser in browsers) {
-    if (browser.aliases.includes(name)) {
-      return true;
-    } else {
-      return false;
-    }
-  }
-}
-
-async function getBrowsers(row, browsers) {
-  if (!browsers) {
-    let browsers = {};
-  }
+async function getBrowsers(row) {
+  const browsers = [];
   const cells = await row.$$('th');
   if (cells.length === 0) throw Error('The row that was passed to getBrowsers() has no <th> elements.');
   for (let i = 1; i < cells.length; i++) {
     const content = await cells[i].getProperty('textContent');
     const value = await content.jsonValue();
-    console.log(value);
-    //browsers.push(value);
+    const id = getId(value);
+    if (!id) throw Error('There is a browser name on the page that is not aliased in browserIds.');
+    browsers.push(id);
   }
   return browsers;
 }
