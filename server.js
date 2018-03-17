@@ -15,7 +15,8 @@ const browserIds = {
   "android": {
     "aliases": [
       "Android",
-      "Android Webview"
+      "Android Webview",
+      "Android webview"
     ]
   },
   "chrome": {
@@ -36,17 +37,19 @@ const browserIds = {
   },
   "edge_mobile": {
     "aliases": [
-      
+      "Edge mobile"      
     ]
   },
   "firefox": {
     "aliases": [
-      "Firefox (Gecko)"
+      "Firefox (Gecko)",
+      "Firefox"
     ]
   },
   "firefox_android": {
     "aliases": [
-      "Firefox Mobile (Gecko)"
+      "Firefox Mobile (Gecko)",
+      "Firefox for Android"
     ]
   },
   "ie": {
@@ -61,17 +64,25 @@ const browserIds = {
   },
   "opera_android": {
     "aliases": [
-      "Opera Mobile"
+      "Opera Mobile",
+      "Opera Android"
     ]
   },
   "safari": {
     "aliases": [
-      "Safari (WebKit)"
+      "Safari (WebKit)",
+      "Safari"
     ]
   },
   "safari_ios": {
     "aliases": [
-      "Safari Mobile"
+      "Safari Mobile",
+      "iOS Safari"
+    ]
+  },
+  "samsung": {
+    "aliases": [
+      "Samsung Internet"
     ]
   }
 };
@@ -108,6 +119,7 @@ function convertSupportValue(value) {
 
 async function createSupportData(namesRow, supportRow) {
   const browsers = {};
+  if (!namesRow || !supportRow) return { "messsage": "no support data" };
   const names = await namesRow.$$('th');
   const support = await supportRow.$$('td');
   if (!names || !support) return { "messsage": "no support data" };
@@ -150,43 +162,70 @@ function makeSchema(data, name) {
   return schema;
 }
 
-async function appendPropertyData(props, data, interface) {
+async function getProperties(page) {
+  const props = await page.$$('dt');
+  const model = {};
   for (let i = 0; i < props.length; i++) {
     const prop = props[i];
-    let name = await prop.$('a code');
-    if (!name) name = await prop.$('code');
-    if (!name) throw Error('appendPropertyData() found no properties, is this right?');
-    const content = await name.getProperty('textContent');
-    const value = await content.jsonValue();
-    const sanitized = value.replace(`${interface}.`, '').replace('()', '');
-    const url = `https://developer.mozilla.org/docs/Web/API/${interface}/${sanitized}`;
-    data.javascript.builtins[sanitized] = {
-      "__compat": {
-        "mdn_url": url,
-        "support": "TODO"
-      }
-    };
+    const a = await prop.$('a');
+    if (a) {
+      const hrefRaw = await a.getProperty('href');
+      const hrefVal = await hrefRaw.jsonValue();
+      const name = hrefVal.substring(hrefVal.lastIndexOf('/') + 1, hrefVal.length);
+      model[name] = model[name] || {};
+      model[name].url = hrefVal;
+    } else {
+      const htmlRaw = await prop.getProperty('innerHTML');
+      const htmlVal = await htmlRaw.jsonValue();
+      console.log(htmlVal);
+      const code = await prop.$('code');
+      if (!code) continue;
+      const raw = await code.getProperty('textContent');
+      const val = await raw.jsonValue();
+      const name = val.substring(val.lastIndexOf('.') + 1, val.length);
+      model[name] = model[name] || {};
+    }
   }
+  return model;
 }
 
 async function getPage(url) {
-  console.log(`getting data for ${url}`);
-  const page = await browser.newPage();
-  await page.goto(url);
-  return page;
+  try {
+    console.log(`getPage(${url})`);
+    return page;
+  } catch (e) {
+    console.log('getPage catch');
+    return undefined;
+  }
 }
 
-async function getSupportData(page) {
-  // debug data
-  const node = await page.$('title')
-  const prop = await node.getProperty('textContent');
-  const title = await prop.jsonValue();
+async function getSupport(page) {
+  async function map(names, values) {
+    const browsers = {};
+    if (!names || !values) return browsers;
+    const nameCells = await names.$$('th');
+    const supportCells = await values.$$('td');
+    for (let i = 1; i < nameCells.length; i++) {
+      const supportNode = await supportCells[i].getProperty('textContent');
+      const supportValue = await supportNode.jsonValue();
+      const nameNode = await nameCells[i].getProperty('textContent');
+      const nameValue = await nameNode.jsonValue();
+      if (deprecatedBrowsers.includes(nameValue)) continue;
+      const id = getId(nameValue);
+      if (!id) {
+        throw Error(`Browser name ${nameValue} is not defined in browserIds.`);
+      }
+      browsers[id] = {};
+      browsers[id].alias = nameValue;
+      browsers[id].support = convertSupportValue(supportValue);
+    }
+    return browsers;
+  }
   const desktopRows = await page.$$('#compat-desktop tr');
-  if (!desktopRows) throw Error(`${title}: desktopRows undefined`);
   const mobileRows = await page.$$('#compat-mobile tr');
-  if (!mobileRows) throw Error(`${title}: mobileRows undefined`);
-  const desktopBrowsers = await createSupportData(desktopRows[0], desktopRows[1]);
-  const mobileBrowsers = await createSupportData(mobileRows[0], mobileRows[1]);
+  if (!desktopRows || !mobileRows) return { "message": "no support data" };
+  const desktopBrowsers = map(desktopRows[0], desktopRows[1]);
+  const mobileBrowsers = map(mobileRows[0], mobileRows[1]);
   return Object.assign(desktopBrowsers, mobileBrowsers);
 }
 
@@ -196,31 +235,56 @@ app.get('/favicon.ico', (request, response) => {
   response.status(404);
 })
 
-app.get("/crawl/:interface/:prop", async (request, response) => {
+// 1. go to page
+// 2. get basic support for that item
+// 3. list out that page's sub-items
+// 4. go to each sub-item page
+// 5. repeat 2 to 4
+
+async function crawl(url, name, model) {
+  model[name] = model[name] || {};
+  const page = await browser.newPage();
+  const response = await page.goto(url);
+  if (!response) throw new Error("OMG");
+  model[name].support = await getSupport(page);
+  model[name].properties = await getProperties(page);
+  for (var property in model[name].properties) {
+    const propertyUrl = model[name].properties[property].url;
+    if (propertyUrl) await crawl(propertyUrl, property, model[name].properties);
+  }
+  return model;
+}
+
+// go to page
+// get its support data, get its features
+// go to feature page
+// get its support data, get its features
+app.get("/crawl/*", async (request, response) => {
   try {
+    const fragment = request.originalUrl.replace('/crawl/', '');
+    const name = fragment.substring(fragment.lastIndexOf('/') + 1, fragment.length);
+    const url = `${MDN_URL}${fragment}`;
     browser = await puppeteer.launch({
       args: ['--no-sandbox']
     });
-    const interface = request.params.interface,
-        prop = request.params.prop;
-    const url = `${MDN_URL}${interface}${prop ? '/' + prop : ''}`;
-    console.log(url);
+    const model = {};
+    await crawl(url, name, model);
+/*
     const page =
         await getPage(url);
     const supportData = await getSupportData(page);
-    const schema = makeSchema(supportData, request.params.interface);
+    const schema = makeSchema(supportData, name);
     const props = await page.$$('dt');
-    if (props.length > 0) await appendPropertyData(props, schema, request.params.interface);
+    if (props && props.length > 0) await addSubItems(props, schema, name);
+*/
+    response.type('application/json').json(model);
     await browser.close();
-    response.type('application/json').json(schema);
   } catch (error) {
-    await browser.close();
     response.status(503).end(error.message);
+    await browser.close();
   }
 });
 
 var listener = app.listen(5000, function () {
   console.log('Your app is listening on port ' + listener.address().port);
 });
-
-
