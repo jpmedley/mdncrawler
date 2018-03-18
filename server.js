@@ -8,7 +8,8 @@ let browser = undefined;
 const deprecatedBrowsers = [
   "IE Phone",
   "IE Mobile",
-  "Firefox OS"
+  "Firefox OS",
+  "Firefox OS (Gecko)"
 ];
 
 const browserIds = {
@@ -106,7 +107,8 @@ function getId(name) {
 
 function convertSupportValue(value) {
   if (value === '(Yes)') return true;
-  if (value === 'No support') return false;
+  if (value.includes('No') && value.includes('support')) return false;
+  if (value === '?') return null;
   const number = Number(value);
   // "7.0" => "7"
   if (!isNaN(number)) return number.toString();
@@ -162,6 +164,17 @@ function makeSchema(data, name) {
   return schema;
 }
 
+function formatUrl(url) {
+  const before = 'org/';
+  const beforeIndex = url.indexOf(before);
+  const after = 'docs';
+  const afterIndex = url.indexOf(after);
+  if (afterIndex - beforeIndex !== 4) {
+    return url.substring(0, beforeIndex + before.length) + url.substring(afterIndex, url.length);
+  }
+  return url;
+}
+
 async function getProperties(page) {
   const props = await page.$$('dt');
   const model = {};
@@ -173,11 +186,10 @@ async function getProperties(page) {
       const hrefVal = await hrefRaw.jsonValue();
       const name = hrefVal.substring(hrefVal.lastIndexOf('/') + 1, hrefVal.length);
       model[name] = model[name] || {};
-      model[name].url = hrefVal;
+      model[name].url = formatUrl(hrefVal);
     } else {
       const htmlRaw = await prop.getProperty('innerHTML');
       const htmlVal = await htmlRaw.jsonValue();
-      console.log(htmlVal);
       const code = await prop.$('code');
       if (!code) continue;
       const raw = await code.getProperty('textContent');
@@ -187,16 +199,6 @@ async function getProperties(page) {
     }
   }
   return model;
-}
-
-async function getPage(url) {
-  try {
-    console.log(`getPage(${url})`);
-    return page;
-  } catch (e) {
-    console.log('getPage catch');
-    return undefined;
-  }
 }
 
 async function getSupport(page) {
@@ -216,8 +218,7 @@ async function getSupport(page) {
         throw Error(`Browser name ${nameValue} is not defined in browserIds.`);
       }
       browsers[id] = {};
-      browsers[id].alias = nameValue;
-      browsers[id].support = convertSupportValue(supportValue);
+      browsers[id].version_added = convertSupportValue(supportValue);
     }
     return browsers;
   }
@@ -242,18 +243,47 @@ app.get('/favicon.ico', (request, response) => {
 // 5. repeat 2 to 4
 
 async function crawl(url, name, model) {
-  model[name] = model[name] || {};
+  model[name] = model[name] || { "url": url };
   const page = await browser.newPage();
   const response = await page.goto(url);
   if (!response) throw new Error("OMG");
-  model[name].support = await getSupport(page);
+  model[name].browsers = await getSupport(page);
   model[name].properties = await getProperties(page);
+  model[name].status = { experimental: false, standard_track: false, deprecated: false };
   for (var property in model[name].properties) {
     const propertyUrl = model[name].properties[property].url;
     if (propertyUrl) await crawl(propertyUrl, property, model[name].properties);
   }
   return model;
 }
+
+function isEmpty(obj) {
+  return Object.keys(obj).length === 0 && obj.constructor === Object;
+}
+
+function isName(obj) {
+  const props = [ 'status', 'properties', 'browsers' ];
+  for (let i = 0; i < props.length; i++) {
+    if (!obj.hasOwnProperty(props[i])) return false;
+  }
+  return true;
+}
+
+function format(model) {
+  const m = { __compat: {} };
+  if (model.url) m.__compat.mdn_url = model.url;
+  if (model.browsers) m.__compat.support = model.browsers;
+  if (model.status) m.__compat.status = model.status;
+  if (model.properties && !isEmpty(model.properties)) {
+    for (let prop in model.properties) {
+      const propModel = model.properties[prop];
+      m[prop] = format(propModel);
+    }
+  }
+  return m;
+}
+
+app.set('json spaces', 2);
 
 // go to page
 // get its support data, get its features
@@ -269,15 +299,13 @@ app.get("/crawl/*", async (request, response) => {
     });
     const model = {};
     await crawl(url, name, model);
-/*
-    const page =
-        await getPage(url);
-    const supportData = await getSupportData(page);
-    const schema = makeSchema(supportData, name);
-    const props = await page.$$('dt');
-    if (props && props.length > 0) await addSubItems(props, schema, name);
-*/
-    response.type('application/json').json(model);
+    const m = {
+      javascript: {
+        builtins: {}
+      }
+    };
+    m.javascript.builtins[name] = format(model[name]);
+    response.type('application/json').json(m);
     await browser.close();
   } catch (error) {
     response.status(503).end(error.message);
