@@ -259,7 +259,7 @@ async function status(page) {
 async function crawl(url, name, model) {
   model[name] = model[name] || { "url": url };
   const page = await browser.newPage();
-  const response = await page.goto(url);
+  const response = await page.goto(url, { timeout: 60000 });
   if (!response) throw new Error("OMG");
   model[name].browsers = await getSupport(page);
   model[name].properties = await getProperties(page);
