@@ -226,8 +226,8 @@ async function getSupport(page) {
   const desktopRows = await page.$$('#compat-desktop tr');
   const mobileRows = await page.$$('#compat-mobile tr');
   if (!desktopRows || !mobileRows) return { "message": "no support data" };
-  const desktopBrowsers = map(desktopRows[0], desktopRows[1]);
-  const mobileBrowsers = map(mobileRows[0], mobileRows[1]);
+  const desktopBrowsers = await map(desktopRows[0], desktopRows[1]);
+  const mobileBrowsers = await map(mobileRows[0], mobileRows[1]);
   return Object.assign(desktopBrowsers, mobileBrowsers);
 }
 
