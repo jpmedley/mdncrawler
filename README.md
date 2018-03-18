@@ -1,5 +1,3 @@
-# puppeteer-queryselector-eval-example
+# mdncrawler
 
-An example of using Puppeteer to scrape the value of an HTML attribute.
-
-Tweet @kaycebasques for discussion.
+See https://mdncrawler.glitch.me

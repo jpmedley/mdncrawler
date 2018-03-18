@@ -2,7 +2,22 @@
 <html>
   <body>
     <p>
-      Test
+      This crawler can (hopefully) help you speed up converting existing MDN browser
+      compatibility data to the new browser-compat-data format.
     </p>
+    <ol>
+      <li>
+        Append the name of a web API to <code>https://mdncrawler.glitch.me/crawl/</code>.
+        E.g. if you want to crawl
+        <code>https://developer.mozilla.org/en-US/docs/Web/API/Metadata</code> you
+        enter <code>https://mdncrawler.glitch.me/crawl/Metadata</code>.
+      </li>
+      <li>Wait a while... the crawler may have to visit a lot of pages.</li>
+      <li>
+        You should eventually get back formatted data which is pretty close to the
+        browser-compat-data format.
+      </li>
+    </ol>
+    <p>Report bugs to https://twitter.com/kaycebasques or kayce@google.com</p>
   </body>
 </html>
