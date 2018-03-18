@@ -236,6 +236,19 @@ app.get('/favicon.ico', (request, response) => {
   response.status(404);
 })
 
+
+async function status(page) {
+  const experimental = await page.$('.notice.experimental');
+  const nonStandard = await page.$('.nonStandard');
+  const deprecated = await page.$('.deprecated');
+  return {
+    experimental: (experimental ? true : false),
+    standard_track: (nonStandard ? false : true),
+    deprecated: (deprecated ? true : false)
+  }
+}
+
+
 // 1. go to page
 // 2. get basic support for that item
 // 3. list out that page's sub-items
@@ -249,7 +262,7 @@ async function crawl(url, name, model) {
   if (!response) throw new Error("OMG");
   model[name].browsers = await getSupport(page);
   model[name].properties = await getProperties(page);
-  model[name].status = { experimental: false, standard_track: false, deprecated: false };
+  model[name].status = await status(page);
   for (var property in model[name].properties) {
     const propertyUrl = model[name].properties[property].url;
     if (propertyUrl) await crawl(propertyUrl, property, model[name].properties);
