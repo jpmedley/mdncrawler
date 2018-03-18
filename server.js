@@ -106,7 +106,7 @@ function getId(name) {
 }
 
 function convertSupportValue(value) {
-  if (value === '(Yes)') return true;
+  if (value.includes('Yes')) return true;
   if (value.includes('No') && value.includes('support')) return false;
   if (value === '?') return null;
   const number = Number(value);
