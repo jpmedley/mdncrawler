@@ -233,11 +233,6 @@ async function getSupport(page) {
 
 app.use(express.static('static'));
 
-app.get('/favicon.ico', (request, response) => {
-  response.status(404);
-})
-
-
 async function status(page) {
   const experimental = await page.$('.notice.experimental');
   const nonStandard = await page.$('.nonStandard');
