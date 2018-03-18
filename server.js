@@ -9,7 +9,8 @@ const deprecatedBrowsers = [
   "IE Phone",
   "IE Mobile",
   "Firefox OS",
-  "Firefox OS (Gecko)"
+  "Firefox OS (Gecko)",
+  "Mozilla Servo"
 ];
 
 const browserIds = {
