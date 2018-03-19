@@ -1,3 +1,11 @@
+/* Bugs
+
+PerformanceTiming.navigationStart
+missed edge mobile because it's just listed as "Edge" in the mobile table
+
+*/
+
+
 const express = require('express'),
     app = express(),
     puppeteer = require('puppeteer'),
@@ -14,7 +22,7 @@ const deprecatedBrowsers = [
 ];
 
 const browserIds = {
-  "android": {
+  "webview_android": {
     "aliases": [
       "Android",
       "Android Webview",
@@ -39,7 +47,8 @@ const browserIds = {
   },
   "edge_mobile": {
     "aliases": [
-      "Edge mobile"      
+      "Edge mobile",
+      "Edge Mobile"
     ]
   },
   "firefox": {
@@ -202,8 +211,22 @@ async function getProperties(page) {
   return model;
 }
 
+function sortBrowsers(list) {
+  const order = [ 'webview_android', 'chrome', 'chrome_android', 'edge', 'edge_mobile',
+      'firefox', 'firefox_android', 'ie', 'nodejs', 'opera', 'opera_android', 'safari',
+      'safari_ios' ];
+  const sorted = {};
+  for (let i = 0; i < order.length; i++) {
+    const id = order[i];
+    if (list[id]) {
+      sorted[id] = list[id];
+    }
+  }
+  return sorted;
+}
+
 async function getSupport(page) {
-  async function map(names, values) {
+  async function map(names, values, isMobile) {
     const browsers = {};
     if (!names || !values) return browsers;
     const nameCells = await names.$$('th');
@@ -212,7 +235,8 @@ async function getSupport(page) {
       const supportNode = await supportCells[i].getProperty('textContent');
       const supportValue = await supportNode.jsonValue();
       const nameNode = await nameCells[i].getProperty('textContent');
-      const nameValue = await nameNode.jsonValue();
+      let nameValue = await nameNode.jsonValue();
+      if (isMobile && nameValue === 'Edge') nameValue = "Edge Mobile";
       if (deprecatedBrowsers.includes(nameValue)) continue;
       const id = getId(nameValue);
       if (!id) {
@@ -226,9 +250,11 @@ async function getSupport(page) {
   const desktopRows = await page.$$('#compat-desktop tr');
   const mobileRows = await page.$$('#compat-mobile tr');
   if (!desktopRows || !mobileRows) return { "message": "no support data" };
-  const desktopBrowsers = await map(desktopRows[0], desktopRows[1]);
-  const mobileBrowsers = await map(mobileRows[0], mobileRows[1]);
-  return Object.assign(desktopBrowsers, mobileBrowsers);
+  const desktopBrowsers = await map(desktopRows[0], desktopRows[1], false);
+  const mobileBrowsers = await map(mobileRows[0], mobileRows[1], true);
+  const unordered = Object.assign(desktopBrowsers, mobileBrowsers);
+  const ordered = sortBrowsers(unordered);
+  return ordered;
 }
 
 app.use(express.static('static'));
