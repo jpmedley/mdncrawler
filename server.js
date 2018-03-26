@@ -1,17 +1,11 @@
-/* Bugs
-
-PerformanceTiming.navigationStart
-missed edge mobile because it's just listed as "Edge" in the mobile table
-
-*/
-
-
 const express = require('express'),
     app = express(),
     puppeteer = require('puppeteer'),
     MDN_URL = 'https://developer.mozilla.org/docs/Web/API/';
 
 let browser = undefined;
+
+// can delete this line
 
 const deprecatedBrowsers = [
   "IE Phone",
@@ -36,7 +30,8 @@ const browserIds = {
   },
   "chrome_android": {
     "aliases": [
-      "Chrome for Android"
+      "Chrome for Android",
+      "Chrome for Android Webview"
     ]
   },
   "edge": {
@@ -116,6 +111,7 @@ function getId(name) {
 }
 
 function convertSupportValue(value) {
+  if (value.includes('[')) return value;
   if (value.includes('Yes')) return true;
   if (value.includes('No') && value.includes('support')) return false;
   if (value === '?') return null;
@@ -164,8 +160,8 @@ function makeSchema(data, name) {
     support[browser] = {};
     support[browser].version_added = data[browser].support;
   }
-  const schema = { "javascript": { "builtins": {} } };
-  schema.javascript.builtins[name] = {
+  const schema = { "api": {} };
+  schema.api[name] = {
     "__compat": {
       "mdn_url": `https://developer.mozilla.org/docs/Web/API/${name}`,
       "support": support
@@ -208,7 +204,11 @@ async function getProperties(page) {
       model[name] = model[name] || {};
     }
   }
-  return model;
+  const sortedModel = {};
+  Object.keys(model).sort().forEach(key => {
+    sortedModel[key] = model[key];
+  });
+  return sortedModel;
 }
 
 function sortBrowsers(list) {
@@ -335,11 +335,9 @@ app.get("/crawl/*", async (request, response) => {
     const model = {};
     await crawl(url, name, model);
     const m = {
-      javascript: {
-        builtins: {}
-      }
+      api: {}
     };
-    m.javascript.builtins[name] = format(model[name]);
+    m.api[name] = format(model[name]);
     response.type('application/json').json(m);
     await browser.close();
   } catch (error) {
